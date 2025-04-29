@@ -1,4 +1,4 @@
-const Contact = require('./contact'); // importujemy model Mongoose
+const Contact = require('./contact');
 
 const listContacts = async () => {
   return await Contact.find();
@@ -20,13 +20,18 @@ const updateContact = async (contactId, body) => {
   return await Contact.findByIdAndUpdate(contactId, body, { new: true });
 };
 
-// Dodajemy tę nową funkcję dla PATCH /favorite
 const updateStatusContact = async (contactId, body) => {
   if (!body || typeof body.favorite !== 'boolean') {
-    throw new Error('missing field favorite');
+    return { error: 'missing field favorite' };
   }
 
-  return await Contact.findByIdAndUpdate(contactId, { favorite: body.favorite }, { new: true });
+  const updatedContact = await Contact.findByIdAndUpdate(
+    contactId,
+    { favorite: body.favorite },
+    { new: true }
+  );
+
+  return updatedContact;
 };
 
 module.exports = {
