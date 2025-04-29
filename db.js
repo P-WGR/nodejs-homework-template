@@ -1,15 +1,23 @@
-const mongoose = require("mongoose");
-require("dotenv").config();
+require('dotenv').config();
 
-const connectDB = async () => {
-  try {
-    const uriDb = process.env.MONGO_URI;
-    await mongoose.connect(uriDb);
-    console.log("Database connection successful");
-  } catch (err) {
-    console.error("Database connection error:", err);
-    process.exit(1);
-  }
-};
+const connectDB = require('./db');
+connectDB();
 
-module.exports = connectDB;
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+const contactsRouter = require('./routes/api/contacts');
+app.use('/api/contacts', contactsRouter);
+
+app.get('/', (req, res) => {
+  res.send('Welcome to the Contacts API!');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running. Use our API on port: ${PORT}`);
+});
+
+module.exports = app;
