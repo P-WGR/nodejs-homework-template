@@ -1,39 +1,37 @@
-const express = require('express');
-const Joi = require('joi');
-
+const express = require("express");
 const {
-  listContacts,
+  getAllContacts,
   getContactById,
-  removeContact,
   addContact,
   updateContact,
-} = require('../../models/contacts');
+  removeContact,
+} = require("../../service/contactService");
 
 const router = express.Router();
 
-// Definicja schematu walidacji z użyciem Joi
-const contactSchema = Joi.object({
-  name: Joi.string().min(2).max(40).required(),
-  email: Joi.string().email({ tlds: { allow: ['com', 'net', 'pl'] } }).required(),
-  phone: Joi.string().min(5).required(),
-});
-
-// GET /api/contacts - Pobiera wszystkie kontakty
-router.get('/', async (req, res, next) => {
+router.get("/", async (req, res, next) => {
   try {
-    const contacts = await listContacts();
+    const contacts = await getAllContacts();
+    if (!contacts.length) {
+      return res.status(404).json({ message: "No contacts found." });
+    }
     res.status(200).json(contacts);
   } catch (error) {
     next(error);
   }
 });
 
-// GET /api/contacts/:contactId - Pobiera kontakt po ID
-router.get('/:contactId', async (req, res, next) => {
+router.get("/:contactId", async (req, res, next) => {
   try {
-    const contact = await getContactById(req.params.contactId);
+    const id = req.params.contactId;
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid contact ID format." });
+    }
+    const contact = await getContactById(id);
     if (!contact) {
-      return res.status(404).json({ message: 'Not found' });
+      return res.status(404).json({
+        message: "Contact not found.",
+      });
     }
     res.status(200).json(contact);
   } catch (error) {
@@ -41,59 +39,91 @@ router.get('/:contactId', async (req, res, next) => {
   }
 });
 
-// POST /api/contacts - Dodaje nowy kontakt
-router.post('/', async (req, res, next) => {
+router.post("/", async (req, res, next) => {
   try {
-    const { error } = contactSchema.validate(req.body);
-    if (error) {
-      // Zwracamy dokładny komunikat o błędzie w walidacji
-      const errorField = error.details[0].context.key;
-      return res.status(400).json({ message: `missing required ${errorField} field` });
+    const { name, email, phone, favorite } = req.body;
+    if (!name || !email || !phone) {
+      return res.status(400).json({ message: "Missing required fields." });
     }
-    const newContact = await addContact(req.body);
-    res.status(201).json(newContact);
+    const newContact = await addContact({ name, email, phone, favorite });
+    res.status(201).json({
+      message: "Contact created",
+      contact: newContact,
+    });
   } catch (error) {
     next(error);
   }
 });
 
-// DELETE /api/contacts/:contactId - Usuwa kontakt po ID
-router.delete('/:contactId', async (req, res, next) => {
+router.delete("/:contactId", async (req, res, next) => {
   try {
-    const deletedContact = await removeContact(req.params.contactId);
+    const id = req.params.contactId;
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid contact ID format." });
+    }
+    if (!id) {
+      res.status(404).json({ message: "Id is required to delete contact" });
+    }
+    const deletedContact = await removeContact(id);
     if (!deletedContact) {
-      return res.status(404).json({ message: 'Not found' });
+      return res.status(404).json({ message: "Contact not found." });
     }
-    res.status(200).json({ message: 'contact deleted' });
+    res.status(200).json({ message: "Contact deleted" });
   } catch (error) {
     next(error);
   }
 });
 
-// PUT /api/contacts/:contactId - Aktualizuje kontakt po ID
-router.put('/:contactId', async (req, res, next) => {
+router.put("/:contactId", async (req, res, next) => {
   try {
-    // Sprawdzamy, czy dane w body są puste
-    if (Object.keys(req.body).length === 0) {
-      return res.status(400).json({ message: 'missing fields' });
+    const id = req.params.contactId;
+    const { name, email, phone, favorite } = req.body;
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid contact ID format." });
     }
-
-    // Walidacja danych przy użyciu Joi
-    const { error } = contactSchema.validate(req.body);
-    if (error) {
-      // Zwracamy dokładny komunikat o błędzie w walidacji
-      const errorField = error.details[0].context.key;
-      return res.status(400).json({ message: `invalid data for ${errorField} field` });
+    if (!name || !email || !phone) {
+      return res.status(400).json({
+        message: "Missing required fields.",
+      });
     }
-
-    // Próba aktualizacji kontaktu
-    const updatedContact = await updateContact(req.params.contactId, req.body);
+    const updatedContact = await updateContact(id, {
+      name,
+      email,
+      phone,
+      favorite,
+    });
     if (!updatedContact) {
-      return res.status(404).json({ message: 'Not found' });
+      return res.status(404).json({ message: "Contact not found." });
     }
+    res.status(200).json({
+      message: "Contact updated",
+      contact: updatedContact,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
-    // Zwracamy zaktualizowany kontakt
-    res.status(200).json(updatedContact);
+router.patch("/:contactId/favorite", async (req, res, next) => {
+  try {
+    const id = req.params.contactId;
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid contact ID format." });
+    }
+    const { favorite } = req.body;
+    if (favorite === undefined) {
+      return res.status(400).json({ message: "Missing field favorite" });
+    }
+    const updatedContact = await updateContact(id, {
+      favorite,
+    });
+    if (!updatedContact) {
+      return res.status(404).json({ message: "Contact not found" });
+    }
+    res.status(200).json({
+      message: "Contact updated",
+      contact: updatedContact,
+    });
   } catch (error) {
     next(error);
   }
