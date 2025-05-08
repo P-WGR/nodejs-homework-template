@@ -1,6 +1,6 @@
 const bcrypt = require("bcryptjs");
 const gravatar = require("gravatar");
-const User = require("../../models/user");
+const User = require("../models/user");
 
 const signup = async (req, res, next) => {
   try {
