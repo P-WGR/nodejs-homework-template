@@ -1,17 +1,27 @@
 const path = require('path');
 const fs = require('fs/promises');
 const Jimp = require('jimp');
-
 const User = require('../../models/user');
 
 const avatarsDir = path.join(__dirname, '../../public/avatars');
 
 const updateAvatar = async (req, res, next) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
     const { path: tempUpload, originalname } = req.file;
     const { _id } = req.user;
 
-    const ext = path.extname(originalname);
+    const ext = path.extname(originalname).toLowerCase();
+    const allowedExts = ['.jpg', '.jpeg', '.png'];
+
+    if (!allowedExts.includes(ext)) {
+      await fs.unlink(tempUpload);
+      return res.status(400).json({ message: 'Invalid file type. Only jpg, jpeg, and png are allowed.' });
+    }
+
     const fileName = `${_id}${ext}`;
     const finalPath = path.join(avatarsDir, fileName);
 
@@ -22,9 +32,9 @@ const updateAvatar = async (req, res, next) => {
 
     const avatarURL = `/avatars/${fileName}`;
 
-    await User.findByIdAndUpdate(_id, { avatarURL });
+    await User.findByIdAndUpdate(_id, { avatarURL }, { new: true });
 
-    res.json({ avatarURL });
+    res.status(200).json({ avatarURL });
   } catch (error) {
     next(error);
   }

@@ -1,36 +1,20 @@
-const bcrypt = require("bcryptjs");
-const gravatar = require("gravatar");
-const User = require("../../models/user");
+const express = require('express');
+const router = express.Router();
 
-const signup = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
+const signup = require('../../controllers/auth/signup');
+const login = require('../../controllers/auth/login');
+const getCurrentUser = require('../../controllers/auth/getCurrentUser');
+const updateAvatar = require('../../controllers/users/updateAvatar');
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(409).json({ message: "Email in use" });
-    }
+const auth = require('../../middlewares/auth');
+const upload = require('../../middlewares/upload');
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+router.post('/signup', signup);
 
-    const avatarURL = gravatar.url(email, { s: '250', d: 'retro' }, true);
+router.post('/login', login);
 
-    const newUser = await User.create({
-      email,
-      password: hashedPassword,
-      avatarURL,
-    });
+router.get('/current', auth, getCurrentUser);
 
-    res.status(201).json({
-      user: {
-        email: newUser.email,
-        subscription: newUser.subscription,
-        avatarURL: newUser.avatarURL,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+router.patch('/avatars', auth, upload.single('avatar'), updateAvatar);
 
-module.exports = signup;
+module.exports = router;
