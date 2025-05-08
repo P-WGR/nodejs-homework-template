@@ -2,6 +2,8 @@ const express = require('express');
 const logger = require('morgan');
 const cors = require('cors');
 const path = require('path');
+const usersRouter = require('./routes/api/users');
+
 
 const contactsRouter = require('./routes/api/contacts');
 const authRouter = require('./routes/api/auth');
@@ -9,6 +11,8 @@ const authRouter = require('./routes/api/auth');
 const app = express();
 
 const formatsLogger = app.get('env') === 'development' ? 'dev' : 'short';
+
+app.use('/users', usersRouter);
 
 app.use(logger(formatsLogger));
 app.use(cors());
