@@ -7,11 +7,13 @@ const {
   removeContact,
 } = require("../../service/contactService");
 
+const auth = require("../../middlewares/auth");
+
 const router = express.Router();
 
-router.get("/", async (req, res, next) => {
+router.get("/", auth, async (req, res, next) => {
   try {
-    const contacts = await getAllContacts();
+    const contacts = await getAllContacts(req.user._id);
     if (!contacts.length) {
       return res.status(404).json({ message: "No contacts found." });
     }
@@ -21,17 +23,15 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-router.get("/:contactId", async (req, res, next) => {
+router.get("/:contactId", auth, async (req, res, next) => {
   try {
     const id = req.params.contactId;
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ message: "Invalid contact ID format." });
     }
-    const contact = await getContactById(id);
+    const contact = await getContactById(id, req.user._id);
     if (!contact) {
-      return res.status(404).json({
-        message: "Contact not found.",
-      });
+      return res.status(404).json({ message: "Contact not found." });
     }
     res.status(200).json(contact);
   } catch (error) {
@@ -39,13 +39,19 @@ router.get("/:contactId", async (req, res, next) => {
   }
 });
 
-router.post("/", async (req, res, next) => {
+router.post("/", auth, async (req, res, next) => {
   try {
     const { name, email, phone, favorite } = req.body;
     if (!name || !email || !phone) {
       return res.status(400).json({ message: "Missing required fields." });
     }
-    const newContact = await addContact({ name, email, phone, favorite });
+    const newContact = await addContact({
+      name,
+      email,
+      phone,
+      favorite,
+      owner: req.user._id,
+    });
     res.status(201).json({
       message: "Contact created",
       contact: newContact,
@@ -55,16 +61,13 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-router.delete("/:contactId", async (req, res, next) => {
+router.delete("/:contactId", auth, async (req, res, next) => {
   try {
     const id = req.params.contactId;
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ message: "Invalid contact ID format." });
     }
-    if (!id) {
-      res.status(404).json({ message: "Id is required to delete contact" });
-    }
-    const deletedContact = await removeContact(id);
+    const deletedContact = await removeContact(id, req.user._id);
     if (!deletedContact) {
       return res.status(404).json({ message: "Contact not found." });
     }
@@ -74,7 +77,7 @@ router.delete("/:contactId", async (req, res, next) => {
   }
 });
 
-router.put("/:contactId", async (req, res, next) => {
+router.put("/:contactId", auth, async (req, res, next) => {
   try {
     const id = req.params.contactId;
     const { name, email, phone, favorite } = req.body;
@@ -82,16 +85,14 @@ router.put("/:contactId", async (req, res, next) => {
       return res.status(400).json({ message: "Invalid contact ID format." });
     }
     if (!name || !email || !phone) {
-      return res.status(400).json({
-        message: "Missing required fields.",
-      });
+      return res.status(400).json({ message: "Missing required fields." });
     }
     const updatedContact = await updateContact(id, {
       name,
       email,
       phone,
       favorite,
-    });
+    }, req.user._id);
     if (!updatedContact) {
       return res.status(404).json({ message: "Contact not found." });
     }
@@ -104,7 +105,7 @@ router.put("/:contactId", async (req, res, next) => {
   }
 });
 
-router.patch("/:contactId/favorite", async (req, res, next) => {
+router.patch("/:contactId/favorite", auth, async (req, res, next) => {
   try {
     const id = req.params.contactId;
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -114,9 +115,7 @@ router.patch("/:contactId/favorite", async (req, res, next) => {
     if (favorite === undefined) {
       return res.status(400).json({ message: "Missing field favorite" });
     }
-    const updatedContact = await updateContact(id, {
-      favorite,
-    });
+    const updatedContact = await updateContact(id, { favorite }, req.user._id);
     if (!updatedContact) {
       return res.status(404).json({ message: "Contact not found" });
     }

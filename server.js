@@ -1,23 +1,20 @@
 require('dotenv').config();
 
 const connectDB = require('./db');
-connectDB();
+const app = require('./app');
 
-const express = require('express');
-const app = express();
+const startServer = async () => {
+  try {
+    await connectDB();
 
-app.use(express.json());
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.log(`Server running. Use our API on port: ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error.message);
+    process.exit(1);
+  }
+};
 
-const contactsRouter = require('./routes/api/contacts');
-app.use('/api/contacts', contactsRouter);
-
-app.get('/', (req, res) => {
-  res.send('Welcome to the Contacts API!');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running. Use our API on port: ${PORT}`);
-});
-
-module.exports = app;
+startServer();
