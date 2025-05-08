@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Joi = require("joi");
+const gravatar = require("gravatar");
 
 const User = require("../../models/user");
 
@@ -27,9 +28,12 @@ const signup = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const avatarURL = gravatar.url(email, { s: '250', d: 'retro' }, true);
+
     const newUser = await User.create({
       email,
       password: hashedPassword,
+      avatarURL,
     });
 
     const payload = { id: newUser._id };
@@ -42,7 +46,8 @@ const signup = async (req, res, next) => {
       token,
       user: {
         email: newUser.email,
-        subscription: newUser.subscription || "starter", 
+        subscription: newUser.subscription || "starter",
+        avatarURL: newUser.avatarURL,
       },
     });
   } catch (err) {
