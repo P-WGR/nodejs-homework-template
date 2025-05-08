@@ -1,15 +1,36 @@
-const express = require("express");
-const router = express.Router();
+const bcrypt = require("bcryptjs");
+const gravatar = require("gravatar");
+const User = require("../../models/user");
 
-const signup = require("../../controllers/auth/signup");
-const login = require("../../controllers/auth/login");
-const getCurrentUser = require("../../controllers/auth/getCurrentUser");
+const signup = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
 
-const auth = require("../../middlewares/auth");
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(409).json({ message: "Email in use" });
+    }
 
-router.post("/signup", signup);
-router.post("/login", login);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-router.get("/current", auth, getCurrentUser);
+    const avatarURL = gravatar.url(email, { s: '250', d: 'retro' }, true);
 
-module.exports = router;
+    const newUser = await User.create({
+      email,
+      password: hashedPassword,
+      avatarURL,
+    });
+
+    res.status(201).json({
+      user: {
+        email: newUser.email,
+        subscription: newUser.subscription,
+        avatarURL: newUser.avatarURL,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = signup;
