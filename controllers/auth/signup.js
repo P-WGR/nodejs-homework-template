@@ -1,5 +1,7 @@
 const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const Joi = require("joi");
+const gravatar = require("gravatar");
 
 const User = require("../../models/user");
 
@@ -7,6 +9,8 @@ const signupSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
 });
+
+const { JWT_SECRET } = process.env;
 
 const signup = async (req, res, next) => {
   try {
@@ -24,15 +28,26 @@ const signup = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const avatarURL = gravatar.url(email, { s: '250', d: 'retro' }, true);
+
     const newUser = await User.create({
       email,
       password: hashedPassword,
+      avatarURL,
     });
 
+    const payload = { id: newUser._id };
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
+
+    newUser.token = token;
+    await newUser.save();
+
     res.status(201).json({
+      token,
       user: {
         email: newUser.email,
-        subscription: newUser.subscription,
+        subscription: newUser.subscription || "starter",
+        avatarURL: newUser.avatarURL,
       },
     });
   } catch (err) {
