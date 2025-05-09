@@ -5,7 +5,7 @@ const gravatar = require("gravatar");
 const { nanoid } = require("nanoid");
 
 const User = require("../../models/user");
-const sendVerificationEmail = require("../../services/email");
+const sendVerificationEmail = require("../../service/email");
 
 const signupSchema = Joi.object({
   email: Joi.string().email().required(),
