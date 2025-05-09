@@ -1,17 +1,19 @@
 const bcrypt = require("bcryptjs");
+// eslint-disable-next-line no-unused-vars
 const jwt = require("jsonwebtoken");
 const Joi = require("joi");
 const gravatar = require("gravatar");
 const { nanoid } = require("nanoid");
 
 const User = require("../../models/user");
-const sendVerificationEmail = require("../../service/email");
+const sendVerificationEmail = require("../../services/email");
 
 const signupSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
 });
 
+// eslint-disable-next-line no-unused-vars
 const { JWT_SECRET } = process.env;
 
 const signup = async (req, res, next) => {
