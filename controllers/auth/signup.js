@@ -1,15 +1,19 @@
 const bcrypt = require("bcryptjs");
+// eslint-disable-next-line no-unused-vars
 const jwt = require("jsonwebtoken");
 const Joi = require("joi");
 const gravatar = require("gravatar");
+const { nanoid } = require("nanoid");
 
 const User = require("../../models/user");
+const sendVerificationEmail = require("../../services/email");
 
 const signupSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
 });
 
+// eslint-disable-next-line no-unused-vars
 const { JWT_SECRET } = process.env;
 
 const signup = async (req, res, next) => {
@@ -27,28 +31,25 @@ const signup = async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const avatarURL = gravatar.url(email, { s: '250', d: 'retro' }, true);
+    const avatarURL = gravatar.url(email, { s: "250", d: "retro" }, true);
+    const verificationToken = nanoid();
 
     const newUser = await User.create({
       email,
       password: hashedPassword,
       avatarURL,
+      verificationToken,
     });
 
-    const payload = { id: newUser._id };
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1h" });
-
-    newUser.token = token;
-    await newUser.save();
+    await sendVerificationEmail(email, verificationToken);
 
     res.status(201).json({
-      token,
       user: {
         email: newUser.email,
         subscription: newUser.subscription || "starter",
         avatarURL: newUser.avatarURL,
       },
+      message: "Verification email sent",
     });
   } catch (err) {
     next(err);
